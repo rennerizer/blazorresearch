@@ -1,0 +1,52 @@
+﻿
+@inject ILogger<Game> logger
+
+<div class="game">
+    <strong>Guess the Number</strong>
+
+    <div class="match-val">correct digit</div>
+
+    <div class="match-pos">correct position</div>
+
+    <input type="number" value="@_digitCount" inputmode="numeric" min="1" max="10" @onchange="RestartGame" />
+
+    <hr />
+
+    @if (_guesses == null)
+    {
+        <h1>Loading...</h1>
+    }
+    else
+    {
+        <div class="guesses">
+
+            @foreach (var row in _guesses)
+            {
+                @for (int i = 0; i < _digitCount; i++)
+                {
+                    <span class="@row.Matches[i]">
+                        @row.Guess[i]
+                    </span>
+                }
+                <br />
+            }
+
+            @if (_winner)
+            {
+                <span>Winner!</span>
+                <div>
+                    <button @onclick="PlayAgain">Play again</button>
+                </div>
+            }
+            else
+            {
+                <input type="text" @bind=_guess class="guess" inputmode="numeric" size="@_digitCount" maxlength="@_digitCount" />
+
+                <button @onclick="GuessAnswer">Guess</button>
+            }
+
+        </div>
+    }
+</div>
+
+
