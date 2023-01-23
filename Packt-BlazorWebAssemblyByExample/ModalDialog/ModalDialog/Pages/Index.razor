@@ -1,0 +1,55 @@
+﻿@page "/"
+
+@using ModalDialog.Components
+
+<PageTitle>Home</PageTitle>
+
+<DialogComponent Show="_showDialog" OnOk="DialogOkHandler" OnCancel="DialogCancelHandler">
+    <Title>
+        Quick List [@(_items.Count + 1)]
+    </Title>
+    <Body>
+        Enter New Item: <input @bind="_newItem" />
+    </Body>
+</DialogComponent>
+
+<button @onclick="OpenDialog">Show Dialog</button>
+
+<ol>
+    @foreach (var item in _items)
+    {
+        <li>@item</li>
+    }
+</ol>
+
+@code {
+    private bool _showDialog = false;
+
+    private string _newItem = string.Empty;
+
+    private List<string> _items = new List<string>();
+
+    private void OpenDialog()
+    {
+        _showDialog = true;
+    }
+
+    private void DialogOkHandler(MouseEventArgs e)
+    {
+        if (!string.IsNullOrEmpty(_newItem))
+        {
+            _items.Add(_newItem);
+
+            _newItem = string.Empty;
+        }
+
+        _showDialog = false;
+    }
+
+    private void DialogCancelHandler(MouseEventArgs e)
+    {
+        _newItem = string.Empty;
+
+        _showDialog = false;
+    }
+}
