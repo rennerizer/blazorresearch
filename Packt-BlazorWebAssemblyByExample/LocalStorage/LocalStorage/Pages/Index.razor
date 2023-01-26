@@ -1,0 +1,60 @@
+﻿@page "/"
+
+@using LocalStorage.Services
+
+@inject ILocalStorageService? localStorage
+@inject IJSRuntime js
+
+<PageTitle>Local Storage Service</PageTitle>
+
+<h2>Local Storage Service</h2>
+
+localStorageData: <input type="text" @bind-value="_data" size="25" />
+
+<hr />
+
+<button @onclick="SaveToLocalStorageAsync">
+    Save to Local Storage
+</button>
+
+<button @onclick="ReadFromLocalStorageAsync">
+    Read from Local Storage
+</button>
+
+@code {
+    private string? _data;
+
+    private IJSObjectReference? _module;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _module = await js.InvokeAsync<IJSObjectReference>("import", "./Pages/Index.razor.js");
+        }
+    }
+
+    async Task SaveToLocalStorageAsync()
+    {
+        var dataInfo = new DataInfo()
+            {
+                Value = _data,
+                Length = _data!.Length,
+                Timestamp = DateTime.Now
+            };
+
+        await localStorage!.SetItemAsync<DataInfo?>("localStorageData", dataInfo);
+    }
+
+    async Task ReadFromLocalStorageAsync()
+    {
+        if (_module is not null)
+        {
+            DataInfo? savedData = await localStorage!.GetItemAsync<DataInfo>("localStorageData");
+
+            string result = $"localStorageData = {savedData!.Value}";
+
+            await _module.InvokeVoidAsync("showLocalStorage", result);
+        }
+    }
+}
