@@ -1,0 +1,82 @@
+﻿@page "/"
+
+@using System.Text
+
+@using WeatherForecast.Models
+@using WeatherForecast.Shared
+
+@inject IJSRuntime JS
+@inject HttpClient Http
+
+<PageTitle>Weather Forecast</PageTitle>
+
+@if (_forecast == null)
+{
+    <p><em>@_message</em></p>
+}
+else
+{
+    <div class="card-group">
+        @foreach (var item in _forecast.Daily.Take(5))
+        {
+            @if (item.Weather != null)
+            {
+                <DailyForecast
+                    Seconds="@item.Dt"
+                    LowTemp="@item.Temp!.Min"
+                    HighTemp="@item.Temp!.Max"
+                    Description="@item.Weather[0].Description"
+                    Icon="@item.Weather[0].Icon" />
+            }
+        }
+    </div>
+}
+
+@code {
+    private string _message = "Loading...";
+
+    private Position? _position;
+
+    private OpenWeather? _forecast;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await GetPositionAsync();
+            await GetForecastAsync();
+        }
+        catch (Exception)
+        {
+            _message = "An error occured.";
+        }
+    }
+
+    private async Task GetPositionAsync()
+    {
+        _position = await JS.InvokeAsync<Position>("interop.getPosition");
+    }
+
+    private async Task GetForecastAsync()
+    {
+        if (_position != null)
+        {
+            string APIKey = "bf01eb0c502bc7c5d1da0726e3fce4ed";
+
+            StringBuilder url = new StringBuilder();
+            url.Append("https://api.openweathermap.org");
+            url.Append("/data/2.5/onecall?");
+            url.Append("lat=");
+            url.Append(_position.Latitude);
+            url.Append("&lon=");
+            url.Append(_position.Longitude);
+            url.Append("&exclude=");
+            url.Append("current,minutely,hourly,alerts");
+            url.Append("&units=imperial");
+            url.Append("&appid=");
+            url.Append(APIKey);
+
+            _forecast = await Http.GetFromJsonAsync<OpenWeather>(url.ToString());
+        }
+    }
+}
