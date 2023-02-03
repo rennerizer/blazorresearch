@@ -1,0 +1,38 @@
+﻿
+<div class="row pt-3">
+    <div class="input-group mb-3">
+        <label class="input-group-text" for="inputTask">
+            Task
+        </label>
+
+        <input @ref="_taskInput" type="text" id="inputTask" class="form-control" @bind-value="@_taskName" @attributes="InputParameters" />
+
+        <button type="button" class="btn btn-outline-secondary" @onclick="OnClickHandlerAsync">
+            Add Task
+        </button>
+    </div>
+</div>
+
+@code {
+    private string? _taskName;
+
+    private ElementReference _taskInput;
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? InputParameters { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnSubmit { get; set; }
+
+    private async Task OnClickHandlerAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(_taskName))
+        {
+            await OnSubmit.InvokeAsync(_taskName);
+
+            _taskName = null;
+
+            await _taskInput.FocusAsync();
+        }
+    }
+}

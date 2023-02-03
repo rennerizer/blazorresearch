@@ -1,0 +1,78 @@
+﻿@page "/"
+
+<PageTitle>Kanban Board</PageTitle>
+
+<NewTask OnSubmit="AddTask" @attributes="InputAttributes" />
+
+<div class="row">
+    <Dropzone   Priority="TaskPriority.High"
+                TaskItems="_taskItems"
+                OnDrop="OnDrop"
+                OnStartDrag="OnStartDrag" />
+
+    <Dropzone   Priority="TaskPriority.Mid"
+                TaskItems="_taskItems"
+                OnDrop="OnDrop"
+                OnStartDrag="OnStartDrag" />
+
+    <Dropzone   Priority="TaskPriority.Low"
+                TaskItems="_taskItems"
+                OnDrop="OnDrop"
+                OnStartDrag="OnStartDrag" />
+
+</div>
+
+@code {
+    private TaskItem _currentItem = new();
+
+    private List<TaskItem> _taskItems = new();
+
+    public Dictionary<string, object> InputAttributes = new()
+    {
+        { "maxLength", "25" },
+        { "placeholder", "Enter new task" },
+        { "title", "This textbox is for adding your tasks." }
+    };
+
+    protected override void OnInitialized()
+    {
+        _taskItems.Add(new TaskItem
+            {
+                TaskName = "Call Mom",
+                Priority = TaskPriority.High
+            });
+
+        _taskItems.Add(new TaskItem
+            {
+                TaskName = "Buy milk",
+                Priority = TaskPriority.Mid
+            });
+
+        _taskItems.Add(new TaskItem
+            {
+                TaskName = "Exercise",
+                Priority = TaskPriority.Low
+            });
+    }
+
+    private void OnStartDrag(TaskItem item)
+    {
+        _currentItem = item;
+    }
+
+    private void OnDrop(TaskPriority priority)
+    {
+        _currentItem.Priority = priority;
+    }
+
+    private void AddTask(string taskName)
+    {
+        var taskItem = new TaskItem()
+            {
+                TaskName = taskName,
+                Priority = TaskPriority.High
+            };
+
+        _taskItems.Add(taskItem);
+    }
+}
