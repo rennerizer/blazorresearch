@@ -1,0 +1,188 @@
+﻿@page "/"
+
+@using System.Collections.ObjectModel
+
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+
+@using DocumentFormat.OpenXml
+@using DocumentFormat.OpenXml.Packaging
+@using DocumentFormat.OpenXml.Spreadsheet
+
+@using ExcelReader.Models
+
+<PageTitle>Excel Reader</PageTitle>
+
+<InputFile OnChange="@SelectFile" accept=".xlsx" />
+
+@if (_file != null)
+{
+    if (_errorMessage == null)
+    {
+        <p>
+            <div>
+                File Name: @_file.Name
+            </div>
+            <div>
+                File Size: @_file.Size.ToString("N0") bytes
+            </div>
+            <div>
+                Content type: @_file.ContentType
+            </div>
+        </p>
+
+        <button type="button" @onclick="ReadFile">
+            Read file
+        </button>
+
+        if (!_loaded)
+        {
+            <p><em>Loading...</em></p>
+        }
+        else
+        {
+            <p>Rows: @_rowCount</p>
+
+            <div style="height: 200px;overflow-y: scroll" tabindex="-1">
+                <table width="450">
+                    <thead style="position: sticky; top: 0; background-color: silver">
+                        <tr>
+                            <th>Year</th>
+                            <th width="255">Country</th>
+                            <th>Gold</th>
+                            <th>Silver</th>
+                            <th>Bronze</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <Virtualize Items="@_allMedals" SpacerElement="tr">
+                            <tr>
+                                <td align="center">@context.Year</td>
+                                <td>@context.Country</td>
+                                <td align="center">@context.Gold</td>
+                                <td align="center">@context.Silver</td>
+                                <td align="center">@context.Bronze</td>
+                            </tr>
+                        </Virtualize>
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+
+    <p>
+        @_errorMessage
+    </p>
+}
+
+@code {
+    private IBrowserFile? _file;
+
+    private string? _errorMessage;
+
+    private bool _loaded;
+
+    private int _rowCount;
+
+    private const int MAXFILESIZE = 50000;
+
+    private Collection<Medals> _allMedals = new();
+
+    private void SelectFile(InputFileChangeEventArgs e)
+    {
+        _file = e.File;
+
+        _errorMessage = null;
+
+        if (    (_file.Size >= MAXFILESIZE) 
+            ||  (_file.ContentType != "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+        {
+            _errorMessage = "Invalid file";
+        }
+    }
+
+    private async Task ReadFile()
+    {
+        try
+        {
+            var stream = new MemoryStream();
+
+            await _file!.OpenReadStream(MAXFILESIZE).CopyToAsync(stream);
+
+            SpreadsheetDocument document = SpreadsheetDocument.Open(stream, false);
+
+            WorkbookPart? bookPart = document!.WorkbookPart;
+
+            Sheet? sheet = bookPart!.Workbook
+                .Descendants<Sheet>()
+                .Where(s => s.Name == "olympic_medals")
+                .FirstOrDefault();
+
+            WorksheetPart sheetPart = (WorksheetPart)(bookPart.GetPartById(sheet.Id));
+
+            SheetData sheetData = sheetPart.Worksheet.Elements<SheetData>().First();
+
+            _rowCount = sheetData.Elements<Row>().Count();
+
+            var stringTable = bookPart
+                .GetPartsOfType<SharedStringTablePart>()
+                .FirstOrDefault();
+
+            foreach (Row row in sheetData.Elements<Row>())
+            {
+                if (row.RowIndex! == 1)
+                    continue;
+
+                int col = 1;
+
+                var medals = new Medals();
+
+                foreach (Cell cell in row.Elements<Cell>())
+                {
+                    string value = cell.InnerText;
+
+                    if (cell.DataType != null)
+                    {
+                        if (cell.DataType.Value == CellValues.SharedString)
+                        {
+                            value = stringTable.SharedStringTable
+                                .ElementAt(int.Parse(value))
+                                .InnerText;
+                        }
+                    }
+
+                    switch (col)
+                    {
+                        case 1:
+                            medals.Year = int.Parse(value);
+                            break;
+                        case 2:
+                            medals.Country = value;
+                            break;
+                        case 3:
+                            medals.Gold = int.Parse(value);
+                            break;
+                        case 4:
+                            medals.Silver = int.Parse(value);
+                            break;
+                        case 5:
+                            medals.Bronze = int.Parse(value);
+                            break;
+                        default:
+                            break;
+                    }
+
+                    col = col + 1;
+                }
+
+                _allMedals.Add(medals);
+            }
+
+            _loaded = true;
+        }
+        catch (Exception exception)
+        {
+            _errorMessage = "Invalid Excel file - " + exception.Message;
+        }
+    }
+}
