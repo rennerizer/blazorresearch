@@ -1,0 +1,117 @@
+﻿@page "/"
+
+@using Microsoft.AspNetCore.Components
+
+@using TaskManager.Shared
+
+@inject HttpClient Http
+
+@if (_tasks == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="d-flex col-md-6 mx-auto py-2">
+        <input type="text" class="form-control m-1" placeholder="Enter Task" @bind="_newTask" />
+
+        <button type="button" class="btn btn-success" @onclick="AddTask">
+            Add
+        </button>
+    </div>
+
+    @foreach (var task in _tasks)
+    {
+        <div class="d-flex col-md-6 mx-auto border-bottom" @key="task">
+            <div class="p-2 flex-fill">
+                <input type="checkbox" checked="@task.IsComplete" @onchange="@(() => CheckboxChecked(task))" />
+
+                <span class="@((task.IsComplete? "completed-task" : ""))">
+                    @task.TaskName
+                </span>
+            </div>
+            <div class="p-1">
+                <button type="button" class="btn btn-outline-danger btn-sm" title="Delete task" @onclick="@(() => DeleteTask(task))">
+                    <span class="bi bi-trash"></span>
+                </button> 
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private IList<TaskItem>? _tasks;
+
+    private string? _newTask;
+
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            string requestUri = "api/TaskItems";
+
+            _tasks = await Http.GetFromJsonAsync<IList<TaskItem>>(requestUri);
+        }
+        catch (Exception exception)
+        {
+            _error = "Error Encountered";
+        }
+    }
+
+    private async Task CheckboxChecked(TaskItem task)
+    {
+        task.IsComplete = !task.IsComplete;
+
+        string requestUri = $"api/TaskItems/{task.TaskItemId}";
+
+        var response = await Http.PutAsJsonAsync<TaskItem>(requestUri, task);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _error = response.ReasonPhrase;   
+        }
+    }
+
+    private async Task DeleteTask(TaskItem task)
+    {
+        _tasks!.Remove(task);
+
+        string requestUri = $"api/TaskItems/{task.TaskItemId}";
+
+        var response = await Http.DeleteAsync(requestUri);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _error = response.ReasonPhrase;
+        }
+    }
+
+    private async Task AddTask()
+    {
+        if (!string.IsNullOrWhiteSpace(_newTask))
+        {
+            TaskItem newTaskItem = new TaskItem
+                {
+                    TaskName = _newTask,
+                    IsComplete = false
+                };
+
+            _tasks!.Add(newTaskItem);
+
+            string requestUri = "api/TaskItems";
+
+            var response = await Http.PostAsJsonAsync(requestUri, newTaskItem);
+
+            if (response.IsSuccessStatusCode)
+            {
+                _newTask = string.Empty;
+            }
+            else
+            {
+                _error = response.ReasonPhrase;
+            }
+        }
+    }
+}
