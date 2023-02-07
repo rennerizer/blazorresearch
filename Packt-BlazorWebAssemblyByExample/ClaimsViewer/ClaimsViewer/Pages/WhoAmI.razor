@@ -1,0 +1,48 @@
+﻿@page "/whoami"
+
+@using System.Security.Claims
+
+<h1>Who Am I?</h1>
+
+<h2>My Claims</h2>
+
+<AuthorizeView Policy="view-all">
+    <Authorized>
+        <ul>
+            @foreach (Claim claim in _claims!)
+            {
+                <li>@claim.Type: @claim.Value</li>
+            }
+        </ul>
+    </Authorized>
+    <NotAuthorized>
+        <div>
+            <b>WARNING: You are not authorized!</b>
+
+            You must be a member of the SynergyAdmins group in Azure AD.
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    [CascadingParameter]
+    public Task<AuthenticationState>? authStateTask { get; set; }
+
+    private string? _name;
+
+    private List<Claim>? _claims;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await authStateTask!;
+
+        var user = authState.User;
+
+        if (user.Identity!.IsAuthenticated)
+        {
+            _name = user.Identity.Name;
+
+            _claims = user.Claims.ToList();
+        }
+    }
+}
