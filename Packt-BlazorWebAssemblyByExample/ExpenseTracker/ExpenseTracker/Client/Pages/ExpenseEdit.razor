@@ -1,0 +1,161 @@
+﻿@page "/expense"
+@page "/expense/{id:int}"
+
+@using Microsoft.AspNetCore.Components.Forms
+
+@using ExpenseTracker.Shared
+
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IJSRuntime JavaScript
+
+<NavigationLock ConfirmExternalNavigation="true" OnBeforeInternalNavigation="HandleBeforeInternalNav" />
+
+@if (id == 0)
+{
+    <h2>Add Expense</h2>
+}
+else
+{
+    <h2>Edit Expense</h2>
+}
+
+@if (!_ready)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <EditForm Model="_expense" OnValidSubmit="HandleValidSubmit">
+
+        <DataAnnotationsValidator />
+
+        <ValidationSummary />
+
+        <div class="mb-3">
+            <label>
+                Date
+                <InputDate @bind-Value="_expense.Date" class="form-control" />
+            </label>
+        </div>
+
+        <div class="row mb-3">
+            <label>
+                Vendor
+                <InputText @bind-Value="_expense.Vender" class="form-control" />
+            </label>
+        </div>
+
+        <div class="row mb-3">
+            <label>
+                Description
+                <InputTextArea @bind-Value="_expense.Description" class="form-control" />
+            </label>
+        </div>
+
+        <div class="row mb-3">
+            <label>
+                Expense Type
+                <InputSelect @bind-Value="_expense.ExpenseTypeId" class="form-control">
+                    <option value=""></option>
+                    @foreach (var expenseType in _types!)
+                    {
+                        <option value="@expenseType.Id">@expenseType.Type</option>
+                    }
+                </InputSelect>
+            </label>
+        </div>
+
+        <div class="row mb-3">
+            <label>
+                Amount
+                <InputNumber @bind-Value="_expense.Amount" class="form-control" />
+            </label>
+        </div>
+
+        <div class="row mb-3">
+            <label>
+                Paid?
+                <InputCheckbox @bind-Value="_expense.Paid" class="form-check mx-1" />
+            </label>
+        </div>
+
+        <div class="pt-2 pb-2">
+            <button type="submit" class="btn btn-primary mr-auto">
+                Save
+            </button>
+        </div>
+
+    </EditForm>
+
+    <div>
+        @_error
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int id { get; set; }
+
+    private bool _ready;
+
+    private string? _error;
+
+    private Expense _expense = new();
+
+    private List<ExpenseType>? _types;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _types = await Http.GetFromJsonAsync<List<ExpenseType>>("api/ExpenseTypes");
+
+        if (id > 0)
+        {
+            try
+            {
+                var result = await Http.GetFromJsonAsync<Expense>($"api/expenses/{id}");
+
+                if (result != null)
+                    _expense = result;
+            }
+            catch (Exception)
+            {
+                Navigation.NavigateTo("/");
+            }
+        }
+
+        _ready = true;
+    }
+
+    private async Task HandleBeforeInternalNav(LocationChangingContext context)
+    {
+        if (context.IsNavigationIntercepted)
+        {
+            var confirm = await JavaScript.InvokeAsync<bool>("confirm", "Are you sure you are ready to leave?");
+
+            if (!confirm)
+                context.PreventNavigation();
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        HttpResponseMessage response;
+
+        if (_expense!.Id == 0)
+        {
+            response = await Http.PostAsJsonAsync("api/Expenses", _expense);
+        }
+        else
+        {
+            string requestUri = $"api/Expenses/{_expense.Id}";
+
+            response = await Http.PutAsJsonAsync(requestUri, _expense);
+        }
+
+        if (response.IsSuccessStatusCode)
+            Navigation.NavigateTo("/");
+        else
+            _error = response.ReasonPhrase;
+    }
+}
